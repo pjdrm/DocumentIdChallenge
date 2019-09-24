@@ -5,7 +5,7 @@ from nltk.corpus import stopwords
 import nltk.stem
 import json
 
-class Document(object):
+class Data(object):
     def __init__(self, doc_path, max_features=3000, lemmatize=True):
         self.load_doc(doc_path, max_features, lemmatize)
         self.del_ghost_lines()
@@ -116,5 +116,3 @@ class ENLemmatizerCountVectorizer(CountVectorizer):
     def build_analyzer(self):
         analyzer = super(ENLemmatizerCountVectorizer, self).build_analyzer()
         return lambda doc: ([self.en_lemmatizer.lemmatize(w) for w in analyzer(doc)])
-
-Document("../data/dataset.dev_small.json", max_features=3000, lemmatize=True)
