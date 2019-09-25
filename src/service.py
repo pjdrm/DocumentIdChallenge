@@ -33,5 +33,23 @@ if __name__ == "__main__":
         model.segment_docs()
         hyp_seg = model.get_final_segmentation(0)
         ref_seg = d.rho
-        print("WD %f"%(wd(hyp_seg, ref_seg)))
+        if ref_seg[0] != -1: #Its development data
+            print("WD %f"%(wd(hyp_seg, ref_seg)))
+        
+        pred_out = []
+        flag = False
+        for rho in hyp_seg:
+            if flag:
+                flag = False
+                continue
+            if rho == 1:
+                pred_out.append("false")
+                pred_out.append("true")
+                flag = True
+            else:
+                pred_out.append("false")
+        pred_out[0] = "true" #First one is always true
+        pred_out.pop()
+        with open(out_path, "w+") as f:
+            f.write("["+", ".join(pred_out)+"]")
         
