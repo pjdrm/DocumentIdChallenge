@@ -5,8 +5,8 @@ from tqdm import trange
 import os
 import seg_dur_prior as sdp
 from scipy.special import gammaln
-from data import Data
 import json
+import collections
 
 class BeamSeg():
     def __init__(self, data, config_path):
@@ -61,6 +61,45 @@ class BeamSeg():
         segmentation_ll += self.prior_class.segmentation_log_prior(u_clusters)
                                 
         return segmentation_ll
+    
+    def get_cluster_order(self, doc_i, u_clusters):
+        cluster_k_list = []
+        for u_cluster in u_clusters:
+            if u_cluster.has_doc(doc_i):
+                u_begin, u_end = u_cluster.get_segment(doc_i)
+                cluster_k_list.append([u_cluster.k, u_begin])
+        cluster_k_list = sorted(cluster_k_list, key=lambda x: x[1])
+        ret_list = []
+        for cluster_k in cluster_k_list:
+            ret_list.append(cluster_k[0])
+        return ret_list
+    
+    def get_k_cluster(self, k, u_clusters):
+        for u_cluster in u_clusters:
+            if u_cluster.k == k:
+                return u_cluster
+        return None
+    
+    def get_segmentation(self, doc_i, u_clusters):
+        '''
+        Returns the final segmentation for a document.
+        This is done by backtracking the best segmentations
+        in a bottom-up fashion.
+        :param doc_i: document index
+        '''
+        if isinstance(u_clusters[0], collections.Iterable):
+            u_clusters = u_clusters[0]
+            
+        hyp_seg = []
+        cluster_order = self.get_cluster_order(doc_i, u_clusters)
+        for k in cluster_order:
+            u_cluster = self.get_k_cluster(k, u_clusters)
+            u_begin, u_end = u_cluster.get_segment(doc_i)
+            seg_len = u_end-u_begin+1
+            doc_i_seg = list([0]*seg_len)
+            doc_i_seg[-1] = 1
+            hyp_seg += doc_i_seg
+        return hyp_seg
     
     def get_final_segmentation(self, doc_i):
         u_clusters = self.best_segmentation[-1][0][1]
@@ -339,6 +378,3 @@ class SentenceCluster(object):
                 return True
         return False
     
-d = Data("data/dataset.dev_small.json", max_features=3000, lemmatize=True)
-model = BeamSeg(d, "cfg.json")
-model.segment_docs()
