@@ -35,34 +35,18 @@ def get_gs_seg(paragraphs):
     ref_seg[-1] = 1
     return ref_seg
 
-def seg_lens(rho):
-    l = 0
-    lens = []
-    for r in rho:
-        if r == 1:
-            lens.append(l+1)
-            l = 0
-        else:
-            l += 1
-    lens.sort()
-    print("Seg lens: %s" % str(lens))
-    
-
 if __name__ == "__main__":
+    '''
+    Service to perform document identification on an input file.
+    '''
+
     if len(sys.argv) != 3:
         print("ERROR: provide <in_data_path> <out_path> arguments")
         
     else:
-        '''
-        in_data_path = sys.argv[1]
-        with open(in_data_path) as data_file:    
-            paragraphs = json.load(data_file)
-        ref_seg = get_gs_seg(paragraphs)
-        seg_lens(ref_seg)
-        '''
         in_data_path = sys.argv[1]
         out_path = sys.argv[2]
-        with open("cfg.json") as f:
+        with open("configs.json") as f:
             seg_config = json.load(f)#TODO: add argument for config
         
         with open(in_data_path) as data_file:    

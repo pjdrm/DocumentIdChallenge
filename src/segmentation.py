@@ -11,6 +11,11 @@ CHUNK_I = 1
 TOTAL_CHUNKS = -1
 
 class BeamSeg():
+    '''
+    Class to perform the document identification task using
+    an unsupervised Bayesian model. Inference is carried out
+    using a greedy beam search algorithm.
+    '''
     def __init__(self, data, seg_config):
         self.data = data
         self.beta = np.array([seg_config["beta"]]*data.W)
@@ -147,29 +152,15 @@ class BeamSeg():
                 doc_i_segs.append((seg_ll, current_u_clusters, k))
         return doc_i_segs
     
-    def remove_seg_dups(self, doc_i_segs):
-        '''
-        Removes duplicate segmentations based on equal segmentation likelyhoods.
-        Ensures that the cache does not end up with unecessary duplicates.
-        :param doc_i_segs: list of tuples in the format (seg_ll, current_u_clusters, phi_tt, k)
-        '''
-        doc_i_segs = sorted(doc_i_segs, key=operator.itemgetter(0), reverse=True)
-        no_dups_doc_i_segs = []
-        prev_seg_ll = -np.inf
-        for seg_result in doc_i_segs:
-            seg_ll = seg_result[0]
-            seg_clusters = seg_result[1]
-            if seg_ll != prev_seg_ll:
-                no_dups_doc_i_segs.append(seg_result)
-            else:
-                print("FOUND SEG DUP")
-            prev_seg_ll = seg_ll
-        return no_dups_doc_i_segs
-    
     def cache_prune(self, cached_segs):
         return cached_segs[:self.max_cache]
         
-    def greedy_segmentation_step(self, u_order=None):
+    def greedy_segmentation_step(self, u_order):
+        '''
+        Main loop for processing paragraphs and tracking the document start assignment
+        with the highest likelihood.
+        :param u_order: order to process paragraphs
+        '''
         with open(self.log_dir+"dp_tracker_"+self.desc+".txt", "a+") as f:
             t = trange(len(u_order), desc='', leave=True)
             cached_segs = [(-np.inf, [])]
@@ -179,8 +170,7 @@ class BeamSeg():
                 t.set_description("chunk %d/%d" % (CHUNK_I, TOTAL_CHUNKS))
                 doc_i_segs = self.compute_seg_ll_seq(cached_segs, doc_i, u)
                         
-                #no_dups_doc_i_segs = self.remove_seg_dups(doc_i_segs)
-                no_dups_doc_i_segs = sorted(doc_i_segs, key=operator.itemgetter(0), reverse=True) #TODO: check that in this setup I dont get dups
+                no_dups_doc_i_segs = sorted(doc_i_segs, key=operator.itemgetter(0), reverse=True)
                 cached_segs = self.cache_prune(no_dups_doc_i_segs)
                 
                 if self.log_flag:

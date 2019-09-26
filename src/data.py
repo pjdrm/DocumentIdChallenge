@@ -5,7 +5,17 @@ from nltk.corpus import stopwords
 import nltk.stem
 
 class Data(object):
+    '''
+    Class to load and pre-process paragraphs from a json file
+    for the document identification task.
+    '''
     def __init__(self, paragraphs, max_features=3000, lemmatize=True):
+        '''
+        Constructor
+        :param paragraphs: list of paragraphs
+        :param max_features: max number of words in the vocabulary
+        :param lemmatize: flag to determine if words should be lemmatized
+        '''
         self.load_doc(paragraphs, max_features, lemmatize)
     
     def process_doc(self, paragraphs):
