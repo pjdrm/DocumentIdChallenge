@@ -3,18 +3,13 @@ from scipy import int32
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.corpus import stopwords
 import nltk.stem
-import json
 
 class Data(object):
-    def __init__(self, doc_path, max_features=3000, lemmatize=True):
-        self.load_doc(doc_path, max_features, lemmatize)
+    def __init__(self, paragraphs, max_features=3000, lemmatize=True):
+        self.load_doc(paragraphs, max_features, lemmatize)
         self.del_ghost_lines()
     
-    def process_doc(self, doc_path):
-        with open(doc_path) as data_file:    
-            paragraphs = json.load(data_file)
-        
-        
+    def process_doc(self, paragraphs):
         rho = []
         sents = []
         for paragraph in paragraphs:
