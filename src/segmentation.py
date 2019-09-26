@@ -5,13 +5,10 @@ from tqdm import trange
 import os
 import seg_dur_prior as sdp
 from scipy.special import gammaln
-import json
 import collections
 
 class BeamSeg():
-    def __init__(self, data, config_path):
-        with open(config_path) as f:    
-            seg_config = json.load(f)
+    def __init__(self, data, seg_config):
         self.data = data
         self.beta = np.array([seg_config["beta"]]*data.W)
         self.prior_class = sdp.SegDurPrior(seg_config, self.data)
@@ -24,7 +21,6 @@ class BeamSeg():
         
         
         self.max_cache = seg_config["max_cache"]
-        self.check_cache_flag = seg_config["check_cache_flag"]
         self.log_flag = seg_config["log_flag"]
         
         self.u_order = [(u, 0) for u in range(self.data.n_sents)]
@@ -120,26 +116,6 @@ class BeamSeg():
             u_k_target_cluster.set_cluster_ll(None)
             u_clusters[i] = u_k_target_cluster
             u_k_target_cluster.add_sents(u_begin, u_end, doc_i)
-            '''
-            if k_target not in possible_clusters:
-                u_begin_k_target, u_end_k_target = u_k_target_cluster.get_segment(doc_i)
-                for k in range(self.max_topics):
-                    if k == k_target:
-                        continue
-                    
-                    u_k_cluster = self.get_k_cluster(k, u_clusters)
-                    if u_k_cluster is None:
-                        continue
-                    
-                    if u_k_cluster.has_doc(doc_i):
-                        u_begin_di, u_end_di = u_k_cluster.get_segment(doc_i)
-                        if u_begin_di > u_begin_k_target:
-                            doc_i_word_counts = np.sum(self.data.doc_word_counts(doc_i)[u_begin_di:u_end_di+1], axis=0)
-                            u_k_cluster.remove_doc(doc_i, doc_i_word_counts)
-                            if len(u_k_cluster.get_docs()) == 0:
-                                u_clusters.remove(u_k_cluster)
-                            u_k_target_cluster.add_sents(u_begin_di, u_end_di, doc_i)
-            '''
         else:
             u_k_cluster = SentenceCluster(self.data, u_begin, u_end, [doc_i], k_target)
             u_clusters.append(u_k_cluster)
@@ -168,57 +144,10 @@ class BeamSeg():
                 doc_i_segs.append((seg_ll, current_u_clusters, k))
         return doc_i_segs
     
-    def check_cache(self, doc_i, u, no_dups_doc_i_segs):
-        cached_segs = []
-        gave_warn = False
-        cached_correct_seg = False
-        found_correct_seg = False
-        for i, seg_result in enumerate(no_dups_doc_i_segs):
-            seg_ll = seg_result[0]
-            seg_clusters = seg_result[1]
-            
-            if u > 1:
-                n_correct_segs = 0
-                for doc_j in range(0, doc_i+1):
-                    rho_seg = self.get_segmentation(doc_j, seg_clusters)
-                    rho_gs = list(self.data.docs_rho_gs[doc_j][:u+1])
-                    rho_seg[-1] = 1
-                    rho_gs[-1] = 1
-                    if str(rho_seg) == str(rho_gs):
-                        n_correct_segs += 1
-                if n_correct_segs == doc_i+1: 
-                    is_correct_seg = True
-                    found_correct_seg = True
-                else:
-                    is_correct_seg = False
-            else:
-                is_correct_seg = True
-                found_correct_seg = True
-            
-            is_cached = self.is_cached_seg(seg_ll, cached_segs)
-            if not is_cached:
-                if len(cached_segs) < self.max_cache:
-                    if is_correct_seg:
-                        cached_correct_seg = True
-                    cached_segs.append(seg_result)
-                    cached_segs = sorted(cached_segs, key=operator.itemgetter(0), reverse=True)
-                    
-                elif seg_ll > cached_segs[-1][0]:
-                    if is_correct_seg:
-                        cached_correct_seg = True
-                    cached_segs[-1] = (seg_ll, seg_clusters)
-                    cached_segs = sorted(cached_segs, key=operator.itemgetter(0), reverse=True)
-                elif is_correct_seg and not gave_warn and not cached_correct_seg:
-                    print("\nWARNING NEED CACHE LEN %d"%i)
-                    gave_warn = True
-        if not found_correct_seg:
-            print("\nLOST CORRECT SEG u: %d"%u)
-        return cached_segs
-    
     def remove_seg_dups(self, doc_i_segs):
         '''
-        Removes duplicate segmentations based on equal segmentation likehoods.
-        Ensures that the cache does not end up with unecessary duplciates.
+        Removes duplicate segmentations based on equal segmentation likelyhoods.
+        Ensures that the cache does not end up with unecessary duplicates.
         :param doc_i_segs: list of tuples in the format (seg_ll, current_u_clusters, phi_tt, k)
         '''
         doc_i_segs = sorted(doc_i_segs, key=operator.itemgetter(0), reverse=True)
@@ -229,6 +158,8 @@ class BeamSeg():
             seg_clusters = seg_result[1]
             if seg_ll != prev_seg_ll:
                 no_dups_doc_i_segs.append(seg_result)
+            else:
+                print("FOUND SEG DUP")
             prev_seg_ll = seg_ll
         return no_dups_doc_i_segs
     
@@ -245,7 +176,8 @@ class BeamSeg():
                 t.set_description("(%d, %d)" % (u, doc_i))
                 doc_i_segs = self.compute_seg_ll_seq(cached_segs, doc_i, u)
                         
-                no_dups_doc_i_segs = self.remove_seg_dups(doc_i_segs)
+                #no_dups_doc_i_segs = self.remove_seg_dups(doc_i_segs)
+                no_dups_doc_i_segs = sorted(doc_i_segs, key=operator.itemgetter(0), reverse=True) #TODO: check that in this setup I dont get dups
                 cached_segs = self.cache_prune(no_dups_doc_i_segs)
                 
                 if self.log_flag:

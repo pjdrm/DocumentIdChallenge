@@ -2,6 +2,7 @@ import sys
 from data import Data
 from segmentation import BeamSeg
 from segeval import window_diff
+import json
 
 def segeval_converter(segmentation):
     segeval_format = []
@@ -28,12 +29,15 @@ if __name__ == "__main__":
     else:
         in_data_path = sys.argv[1]
         out_path = sys.argv[2]
-        d = Data(in_data_path, max_features=100, lemmatize=True) #TODO: add argument for config
-        model = BeamSeg(d, "cfg.json") #TODO: add argument for config
+        with open("cfg.json") as f:
+            seg_config = json.load(f)#TODO: add argument for config
+        d = Data(in_data_path, max_features=seg_config["max_features"], lemmatize=True)
+        model = BeamSeg(d, seg_config)
         model.segment_docs()
         hyp_seg = model.get_final_segmentation(0)
         ref_seg = d.rho
         if ref_seg[0] != -1: #Its development data
+            print("ref: %s\nhyp: %s"%(list(ref_seg), hyp_seg))
             print("WD %f"%(wd(hyp_seg, ref_seg)))
         
         pred_out = []
