@@ -1,0 +1,7 @@
+{
+	"beta": 1.5,
+	"seg_dur_prior_config": ["gamma_poisson", [[7.0], [4.0]]],
+	"max_cache": 10,
+	"max_features": 1000,
+	"log_flag": false
+}
