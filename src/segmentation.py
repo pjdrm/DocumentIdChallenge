@@ -7,6 +7,9 @@ import seg_dur_prior as sdp
 from scipy.special import gammaln
 import collections
 
+CHUNK_I = 1
+TOTAL_CHUNKS = -1
+
 class BeamSeg():
     def __init__(self, data, seg_config):
         self.data = data
@@ -173,7 +176,7 @@ class BeamSeg():
             for i in t:
                 u = u_order[i][0]
                 doc_i = u_order[i][1]
-                t.set_description("(%d, %d)" % (u, doc_i))
+                t.set_description("chunk %d/%d" % (CHUNK_I, TOTAL_CHUNKS))
                 doc_i_segs = self.compute_seg_ll_seq(cached_segs, doc_i, u)
                         
                 #no_dups_doc_i_segs = self.remove_seg_dups(doc_i_segs)

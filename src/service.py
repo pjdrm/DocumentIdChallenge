@@ -1,6 +1,6 @@
 import sys
 from data import Data
-from segmentation import BeamSeg
+import segmentation as seg
 from segeval import window_diff
 import json
 
@@ -35,11 +35,31 @@ def get_gs_seg(paragraphs):
     ref_seg[-1] = 1
     return ref_seg
 
+def seg_lens(rho):
+    l = 0
+    lens = []
+    for r in rho:
+        if r == 1:
+            lens.append(l+1)
+            l = 0
+        else:
+            l += 1
+    lens.sort()
+    print("Seg lens: %s" % str(lens))
+    
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("ERROR: provide <in_data_path> <out_path> arguments")
         
     else:
+        '''
+        in_data_path = sys.argv[1]
+        with open(in_data_path) as data_file:    
+            paragraphs = json.load(data_file)
+        ref_seg = get_gs_seg(paragraphs)
+        seg_lens(ref_seg)
+        '''
         in_data_path = sys.argv[1]
         out_path = sys.argv[2]
         with open("cfg.json") as f:
@@ -48,23 +68,24 @@ if __name__ == "__main__":
         with open(in_data_path) as data_file:    
             paragraphs = json.load(data_file)
         
-        n = 30
+        n = 70
         max_features = seg_config["max_features"]
         data_chunks = list(split_data(paragraphs, n))
+        seg.TOTAL_CHUNKS = len(data_chunks)
         hyp_seg = []
-        ref_seg = []
         for i, paragraph_chunk in enumerate(data_chunks):
             d = Data(paragraph_chunk, max_features=max_features, lemmatize=True)
-            model = BeamSeg(d, seg_config)
+            model = seg.BeamSeg(d, seg_config)
             model.segment_docs()
             chunk_seg_hyp = model.get_final_segmentation(0)
             chunk_seg_hyp[-1] = 0
             hyp_seg += chunk_seg_hyp
+            seg.CHUNK_I += 1
         hyp_seg[-1] = 1
         
         if "document_start" in paragraphs[0]: #Its development data
             ref_seg = get_gs_seg(paragraphs)
-            print("ref: %s\nhyp: %s"%(ref_seg, hyp_seg))
+            #print("ref: %s\nhyp: %s"%(ref_seg, hyp_seg))
             print("WD %f"%(wd(hyp_seg, ref_seg)))
         
         pred_out = []
@@ -83,4 +104,3 @@ if __name__ == "__main__":
         pred_out.pop()
         with open(out_path, "w+") as f:
             f.write("["+", ".join(pred_out)+"]")
-        

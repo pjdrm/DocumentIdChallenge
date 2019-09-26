@@ -7,7 +7,6 @@ import nltk.stem
 class Data(object):
     def __init__(self, paragraphs, max_features=3000, lemmatize=True):
         self.load_doc(paragraphs, max_features, lemmatize)
-        self.del_ghost_lines()
     
     def process_doc(self, paragraphs):
         rho = []
@@ -68,38 +67,7 @@ class Data(object):
                 self.d_u_wi_indexes.append(doc_i_u)
                 doc_i_u = []
         self.W_I_words = np.array(self.W_I_words)
-                        
-    '''
-    Boundary ghost lines are lines with all word counts equal to 0.
-    I found these particular lines to badly affect inference, thus,
-    I print a warning if I find them.
-    '''                    
-    def del_ghost_lines(self):
-        self.ghost_lines = np.where(~self.U_W_counts.any(axis=1))[0]
-        boundary_ghost_lines = np.intersect1d(self.rho_eq_1, self.ghost_lines)
-        if len(boundary_ghost_lines) > 0:
-            print("WARNING: the following ghost lines match a boundary: %s" % (str(boundary_ghost_lines)))
-            '''
-            The current fix to ghost lines is to consider
-            the previous line as boundary instead.
-            '''
-            for b_gl in boundary_ghost_lines:
-                if b_gl-1 in boundary_ghost_lines:
-                    print("WARNING: Oh no another boundary ghost line...")
-                
-                while b_gl-1 in self.ghost_lines:
-                    b_gl -= 1
-                self.rho[b_gl-1] = 1
-                    
-        
-        self.n_sents -= len(self.ghost_lines)
-        self.U_W_counts = np.delete(self.U_W_counts, self.ghost_lines, axis=0)
-        self.U_I_words = np.delete(self.U_I_words, self.ghost_lines, axis=0)
-        self.rho = np.delete(self.rho, self.ghost_lines, axis=0)
-        self.rho_eq_1 = np.append(np.nonzero(self.rho)[0], [self.n_sents-1])
-        self.n_segs = len(self.rho_eq_1)
-        self.sents_len = np.sum(self.U_W_counts, axis = 1)
-        
+                                
 class ENLemmatizerCountVectorizer(CountVectorizer):
     def __init__(self, stopwords_list=None, max_features=None):
         CountVectorizer.__init__(self,analyzer="word",\
